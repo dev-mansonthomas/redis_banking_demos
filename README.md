@@ -311,6 +311,30 @@ Only chat tokens are billable. A typical UC9 demo session (10-20 questions) cost
 }
 ```
 
+## Collecting logs for debugging
+
+When something fails (HTTP 500 on a use case, a missing index, a slow query), dump everything
+a diagnosis needs into `debug/` with one command:
+
+```bash
+./scripts/dump-logs.sh              # last 30 min, 2000 lines per service
+./scripts/dump-logs.sh 10m 500      # last 10 min, 500 lines per service
+```
+
+It writes `debug/logs-<timestamp>/` (plus a `debug/latest` symlink) containing:
+
+| File | Content |
+|------|---------|
+| `errors.txt` | every ERROR / Exception / "Caused by" line — **read this first** |
+| `local-app.log` | the Spring Boot log file (`logs/app.log`, written in both dev and Docker mode) |
+| `docker-<service>.log` | `docker compose logs` per running service (app, redis, agent-memory-server, redis-insight) |
+| `app-state.txt` | `/api/health` and `/api/cache/stats` responses |
+| `redis-state.txt` | `FT._LIST`, `DBSIZE`, `INFO`, `SLOWLOG GET 25`, `MEMORY DOCTOR` |
+| `context.txt` | last 5 commits, working-tree status, `docker compose ps` |
+
+`debug/` and `logs/` are gitignored. Override the Redis target with
+`REDIS_HOST` / `REDIS_PORT`, and the app URL with `APP_URL`.
+
 ## Project Structure
 
 ```

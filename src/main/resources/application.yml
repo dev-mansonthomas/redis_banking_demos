@@ -25,6 +25,16 @@ spring:
 server:
   port: 8080
 
+# Dev-mode logs land in logs/app.log so scripts/dump-logs.sh can collect them.
+# In Docker the same output is still available via `docker compose logs app`.
+logging:
+  file:
+    name: logs/app.log
+  logback:
+    rollingpolicy:
+      max-file-size: 20MB
+      max-history: 3
+
 openai:
   api-key: ${OPENAI_API_KEY:}
   model: gpt-4o-mini
