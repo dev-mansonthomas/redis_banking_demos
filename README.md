@@ -311,6 +311,27 @@ Only chat tokens are billable. A typical UC9 demo session (10-20 questions) cost
 }
 ```
 
+## Persistence: intentionally disabled
+
+The Redis container runs with `--save "" --appendonly no`: **no RDB snapshot, no AOF**.
+Workshop data is disposable — the application recreates every dataset and every index at
+startup (`@PostConstruct` loaders) and on demand via `POST /api/reset-all`.
+
+Why this matters for a live demo:
+
+- A full disk used to break the whole demo. With snapshots on, a failed `BGSAVE` plus the
+  default `stop-writes-on-bgsave-error yes` makes Redis **reject every write**, so any use case
+  that writes (cache `SET`, rate-limit `INCR`, lock `SET NX`, stream `XADD`) returns HTTP 500
+  while read-only use cases keep working. No snapshot, no such failure mode.
+- Every run starts from the same clean state, so demos are reproducible and no stale keys or
+  half-built indexes survive from a previous session.
+
+Consequence: if the **Redis container** is restarted while the app is running, the data is gone
+and the app will not reload it by itself — restart the app, or click **Reset All Data** in the
+navbar (`POST /api/reset-all`). Restarting the *app* alone is always safe.
+
+Cold start measured on an empty Redis: app healthy in ~7 s, 1648 keys, 11 search indexes.
+
 ## Collecting logs for debugging
 
 When something fails (HTTP 500 on a use case, a missing index, a slow query), dump everything
