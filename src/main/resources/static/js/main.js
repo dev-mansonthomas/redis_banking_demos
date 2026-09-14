@@ -59,12 +59,25 @@
         });
     }
 
+    function notifyPresenterLayoutChange(active) {
+        // Widgets that cache their container size (Leaflet maps, charts) only recompute
+        // on a resize event, and entering presenter mode never fires one.
+        window.dispatchEvent(new CustomEvent('presenter-mode-change', { detail: { active: active } }));
+        window.dispatchEvent(new Event('resize'));
+    }
+
     function setPresenterMode(enabled, persist) {
         var active = !!enabled && hasPresenterToggle();
         if (document.body) {
             document.body.classList.toggle('presenter-fullscreen', active);
         }
         syncPresenterModeButtons();
+
+        if (typeof window.requestAnimationFrame === 'function') {
+            window.requestAnimationFrame(function () { notifyPresenterLayoutChange(active); });
+        } else {
+            notifyPresenterLayoutChange(active);
+        }
 
         if (persist !== false) {
             writePresenterModePreference(active);

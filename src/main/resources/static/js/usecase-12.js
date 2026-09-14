@@ -8,6 +8,7 @@
     var currentLat = 40.4168;
     var currentLng = -3.7038;
     var map, userMarker, radiusCircle;
+    var lastBounds = null;
     var resultMarkers = [];
 
     // --- DOM refs ---
@@ -89,6 +90,24 @@
         attribution: '&copy; OpenStreetMap contributors',
         maxZoom: 18
     }).addTo(map);
+
+    // Leaflet caches the container size, so the map keeps the pre-fullscreen width
+    // (tiles and markers stay on the left half). Recompute it on every layout switch.
+    function refreshMapSize() {
+        if (!map) return;
+        map.invalidateSize();
+        // The previous fitBounds was computed for the old width: refit so the
+        // result set fills the new viewport instead of hugging one corner.
+        if (lastBounds && lastBounds.length > 0) {
+            map.fitBounds(lastBounds, { padding: [40, 40] });
+        }
+    }
+
+    window.addEventListener('presenter-mode-change', function () {
+        refreshMapSize();
+        // Run again once the fullscreen layout has settled (CSS height swap).
+        setTimeout(refreshMapSize, 300);
+    });
 
     // Custom icons
     var atmIcon = L.divIcon({
@@ -246,6 +265,7 @@
         if (items.length > 0) {
             var allPoints = [[currentLat, currentLng]];
             items.forEach(function (item) { allPoints.push([item.lat, item.lng]); });
+            lastBounds = allPoints;
             map.fitBounds(allPoints, { padding: [40, 40] });
         }
     }

@@ -32,6 +32,16 @@ public final class RedisStartupHelper {
         return longValue(asMap(raw).get("num_docs"));
     }
 
+    /** True when FT.INFO succeeds, i.e. the index definition exists (regardless of doc count). */
+    public static boolean indexExists(StringRedisTemplate redis, String indexName) {
+        try {
+            return redis.execute((RedisCallback<Object>) connection ->
+                    connection.execute("FT.INFO", bytes(indexName))) != null;
+        } catch (Exception e) {
+            return false;
+        }
+    }
+
     public static boolean indexExistsWithMinDocs(StringRedisTemplate redis, String indexName, long minDocs) {
         return indexDocCount(redis, indexName) >= minDocs;
     }
