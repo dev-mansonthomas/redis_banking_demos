@@ -35,3 +35,7 @@ appendonly.aof
 
 # Playwright MCP
 .playwright-mcp/
+
+# Local debug dumps (logs, Redis state) — never commit
+debug/
+logs/

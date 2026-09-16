@@ -733,6 +733,12 @@ body.presenter-fullscreen .demo-container {
     font-size: 1.05rem;
 }
 
+/* UC12: the map div carries an inline height, hence !important */
+body.presenter-fullscreen #map {
+    height: 55vh !important;
+    min-height: 320px;
+}
+
 body.presenter-fullscreen .demo-panel h2 {
     font-size: 1.1rem;
 }

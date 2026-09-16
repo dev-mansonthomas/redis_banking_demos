@@ -60,6 +60,10 @@ public class DocumentDataLoader {
             log.info("UC8: force reload enabled for regulation documents, rebuilding index and JSON docs");
         } else {
             long existingDocs = existingDocCount();
+            if (existingDocs >= 1 && !RedisStartupHelper.indexExists(redis, INDEX_NAME)) {
+                log.warn("UC8: document data present but index {} is missing, rebuilding", INDEX_NAME);
+                existingDocs = 0;
+            }
             if (existingDocs >= 1) {
                 int existingVectorDim = existingStoredVectorDimension();
                 if (existingVectorDim == VECTOR_DIM) {

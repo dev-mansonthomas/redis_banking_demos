@@ -57,8 +57,17 @@ public class GeoFinderService {
         } else {
             Long geoEntries = redis.opsForZSet().size(GEO_KEY);
             long branchDocs = existingBranchDocCount();
-            if (geoEntries != null && geoEntries >= expectedCount && branchDocs >= expectedCount) {
-                log.info("UC12: geo key already present ({} entries), skipping reload", geoEntries);
+            boolean dataPresent = geoEntries != null && geoEntries >= expectedCount && branchDocs >= expectedCount;
+            if (dataPresent && RedisStartupHelper.indexExists(redis, INDEX_NAME)) {
+                log.info("UC12: geo key already present ({} entries) and index {} available, skipping reload",
+                        geoEntries, INDEX_NAME);
+                return;
+            }
+            if (dataPresent) {
+                // JSON docs survive a restart but the index definition may not:
+                // recreate the index alone instead of skipping it with the reload.
+                log.warn("UC12: geo data present but index {} is missing, recreating index only", INDEX_NAME);
+                createIndex();
                 return;
             }
         }

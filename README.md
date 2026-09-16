@@ -311,6 +311,51 @@ Only chat tokens are billable. A typical UC9 demo session (10-20 questions) cost
 }
 ```
 
+## Persistence: intentionally disabled
+
+The Redis container runs with `--save "" --appendonly no`: **no RDB snapshot, no AOF**.
+Workshop data is disposable — the application recreates every dataset and every index at
+startup (`@PostConstruct` loaders) and on demand via `POST /api/reset-all`.
+
+Why this matters for a live demo:
+
+- A full disk used to break the whole demo. With snapshots on, a failed `BGSAVE` plus the
+  default `stop-writes-on-bgsave-error yes` makes Redis **reject every write**, so any use case
+  that writes (cache `SET`, rate-limit `INCR`, lock `SET NX`, stream `XADD`) returns HTTP 500
+  while read-only use cases keep working. No snapshot, no such failure mode.
+- Every run starts from the same clean state, so demos are reproducible and no stale keys or
+  half-built indexes survive from a previous session.
+
+Consequence: if the **Redis container** is restarted while the app is running, the data is gone
+and the app will not reload it by itself — restart the app, or click **Reset All Data** in the
+navbar (`POST /api/reset-all`). Restarting the *app* alone is always safe.
+
+Cold start measured on an empty Redis: app healthy in ~7 s, 1648 keys, 11 search indexes.
+
+## Collecting logs for debugging
+
+When something fails (HTTP 500 on a use case, a missing index, a slow query), dump everything
+a diagnosis needs into `debug/` with one command:
+
+```bash
+./scripts/dump-logs.sh              # last 30 min, 2000 lines per service
+./scripts/dump-logs.sh 10m 500      # last 10 min, 500 lines per service
+```
+
+It writes `debug/logs-<timestamp>/` (plus a `debug/latest` symlink) containing:
+
+| File | Content |
+|------|---------|
+| `errors.txt` | every ERROR / Exception / "Caused by" line — **read this first** |
+| `local-app.log` | the Spring Boot log file (`logs/app.log`, written in both dev and Docker mode) |
+| `docker-<service>.log` | `docker compose logs` per running service (app, redis, agent-memory-server, redis-insight) |
+| `app-state.txt` | `/api/health` and `/api/cache/stats` responses |
+| `redis-state.txt` | `FT._LIST`, `DBSIZE`, `INFO`, `SLOWLOG GET 25`, `MEMORY DOCTOR` |
+| `context.txt` | last 5 commits, working-tree status, `docker compose ps` |
+
+`debug/` and `logs/` are gitignored. Override the Redis target with
+`REDIS_HOST` / `REDIS_PORT`, and the app URL with `APP_URL`.
+
 ## Project Structure
 
 ```
